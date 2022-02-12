@@ -89,6 +89,10 @@ also documented. They're both worth taking a look:
 - [The _Black_ Code Style: Current style](https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html)
 - [The _Black_ Code Style: Future style](https://black.readthedocs.io/en/stable/the_black_code_style/future_style.html)
 
+Changes to the _Black_ code style are bound by the Stability Policy:
+
+- [The _Black_ Code Style: Stability Policy](https://black.readthedocs.io/en/stable/the_black_code_style/index.html#stability-policy)
+
 Please refer to this document before submitting an issue. What seems like a bug might be
 intended behaviour.
 
@@ -126,10 +130,10 @@ code in compliance with many other _Black_ formatted projects.
 ## Used by
 
 The following notable open-source projects trust _Black_ with enforcing a consistent
-code style: pytest, tox, Pyramid, Django Channels, Hypothesis, attrs, SQLAlchemy,
-Poetry, PyPA applications (Warehouse, Bandersnatch, Pipenv, virtualenv), pandas, Pillow,
-Twisted, LocalStack, every Datadog Agent Integration, Home Assistant, Zulip, Kedro,
-OpenOA, FLORIS, ORBIT, WOMBAT, and many more.
+code style: pytest, tox, Pyramid, Django, Django Channels, Hypothesis, attrs,
+SQLAlchemy, Poetry, PyPA applications (Warehouse, Bandersnatch, Pipenv, virtualenv),
+pandas, Pillow, Twisted, LocalStack, every Datadog Agent Integration, Home Assistant,
+Zulip, Kedro, OpenOA, FLORIS, ORBIT, WOMBAT, and many more.
 
 The following organizations use _Black_: Facebook, Dropbox, KeepTruckin, Mozilla, Quora,
 Duolingo, QuantumBlack, Tesla.

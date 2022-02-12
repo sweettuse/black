@@ -10,7 +10,7 @@ import sys
 import types
 import unittest
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stderr
 from dataclasses import replace
 from io import BytesIO
 from pathlib import Path
@@ -63,6 +63,7 @@ from tests.util import (
 )
 
 THIS_FILE = Path(__file__)
+EMPTY_CONFIG = THIS_DIR / "data" / "empty_pyproject.toml"
 PY36_ARGS = [f"--target-version={version.name.lower()}" for version in PY36_VERSIONS]
 DEFAULT_EXCLUDE = black.re_compile_maybe_verbose(black.const.DEFAULT_EXCLUDES)
 DEFAULT_INCLUDE = black.re_compile_maybe_verbose(black.const.DEFAULT_INCLUDES)
@@ -159,7 +160,12 @@ class BlackTestCase(BlackBaseTestCase):
         source, expected = read_data("src/black/__init__", data=False)
         result = BlackRunner().invoke(
             black.main,
-            ["-", "--fast", f"--line-length={black.DEFAULT_LINE_LENGTH}"],
+            [
+                "-",
+                "--fast",
+                f"--line-length={black.DEFAULT_LINE_LENGTH}",
+                f"--config={EMPTY_CONFIG}",
+            ],
             input=BytesIO(source.encode("utf8")),
         )
         self.assertEqual(result.exit_code, 0)
@@ -175,13 +181,12 @@ class BlackTestCase(BlackBaseTestCase):
         )
         source, _ = read_data("expression.py")
         expected, _ = read_data("expression.diff")
-        config = THIS_DIR / "data" / "empty_pyproject.toml"
         args = [
             "-",
             "--fast",
             f"--line-length={black.DEFAULT_LINE_LENGTH}",
             "--diff",
-            f"--config={config}",
+            f"--config={EMPTY_CONFIG}",
         ]
         result = BlackRunner().invoke(
             black.main, args, input=BytesIO(source.encode("utf8"))
@@ -193,14 +198,13 @@ class BlackTestCase(BlackBaseTestCase):
 
     def test_piping_diff_with_color(self) -> None:
         source, _ = read_data("expression.py")
-        config = THIS_DIR / "data" / "empty_pyproject.toml"
         args = [
             "-",
             "--fast",
             f"--line-length={black.DEFAULT_LINE_LENGTH}",
             "--diff",
             "--color",
-            f"--config={config}",
+            f"--config={EMPTY_CONFIG}",
         ]
         result = BlackRunner().invoke(
             black.main, args, input=BytesIO(source.encode("utf8"))
@@ -252,7 +256,6 @@ class BlackTestCase(BlackBaseTestCase):
 
     def test_expression_diff(self) -> None:
         source, _ = read_data("expression.py")
-        config = THIS_DIR / "data" / "empty_pyproject.toml"
         expected, _ = read_data("expression.diff")
         tmp_file = Path(black.dump_to_file(source))
         diff_header = re.compile(
@@ -261,7 +264,7 @@ class BlackTestCase(BlackBaseTestCase):
         )
         try:
             result = BlackRunner().invoke(
-                black.main, ["--diff", str(tmp_file), f"--config={config}"]
+                black.main, ["--diff", str(tmp_file), f"--config={EMPTY_CONFIG}"]
             )
             self.assertEqual(result.exit_code, 0)
         finally:
@@ -279,12 +282,12 @@ class BlackTestCase(BlackBaseTestCase):
 
     def test_expression_diff_with_color(self) -> None:
         source, _ = read_data("expression.py")
-        config = THIS_DIR / "data" / "empty_pyproject.toml"
         expected, _ = read_data("expression.diff")
         tmp_file = Path(black.dump_to_file(source))
         try:
             result = BlackRunner().invoke(
-                black.main, ["--diff", "--color", str(tmp_file), f"--config={config}"]
+                black.main,
+                ["--diff", "--color", str(tmp_file), f"--config={EMPTY_CONFIG}"],
             )
         finally:
             os.unlink(tmp_file)
@@ -325,7 +328,9 @@ class BlackTestCase(BlackBaseTestCase):
             r"\d\d:\d\d:\d\d\.\d\d\d\d\d\d \+\d\d\d\d"
         )
         try:
-            result = BlackRunner().invoke(black.main, ["-C", "--diff", str(tmp_file)])
+            result = BlackRunner().invoke(
+                black.main, ["-C", "--diff", str(tmp_file), f"--config={EMPTY_CONFIG}"]
+            )
             self.assertEqual(result.exit_code, 0)
         finally:
             os.unlink(tmp_file)
@@ -1198,6 +1203,20 @@ class BlackTestCase(BlackBaseTestCase):
             ignore_config=True,
         )
 
+    def test_required_version_matches_partial_version(self) -> None:
+        self.invokeBlack(
+            ["--required-version", black.__version__.split(".")[0], "-c", "0"],
+            exit_code=0,
+            ignore_config=True,
+        )
+
+    def test_required_version_does_not_match_on_minor_version(self) -> None:
+        self.invokeBlack(
+            ["--required-version", black.__version__.split(".")[0] + ".999", "-c", "0"],
+            exit_code=1,
+            ignore_config=True,
+        )
+
     def test_required_version_does_not_match_version(self) -> None:
         result = BlackRunner().invoke(
             black.main,
@@ -1338,6 +1357,21 @@ class BlackTestCase(BlackBaseTestCase):
                 black.find_project_root((src_python,)),
                 (src_dir.resolve(), "pyproject.toml"),
             )
+
+    @patch(
+        "black.files.find_user_pyproject_toml",
+    )
+    def test_find_pyproject_toml(self, find_user_pyproject_toml: MagicMock) -> None:
+        find_user_pyproject_toml.side_effect = RuntimeError()
+
+        with redirect_stderr(io.StringIO()) as stderr:
+            result = black.files.find_pyproject_toml(
+                path_search_start=(str(Path.cwd().root),)
+            )
+
+        assert result is None
+        err = stderr.getvalue()
+        assert "Ignoring user configuration" in err
 
     @patch(
         "black.files.find_user_pyproject_toml",
