@@ -1,6 +1,6 @@
 ![Black Logo](https://raw.githubusercontent.com/psf/black/main/docs/_static/logo2-readme.png)
 
-<h2 align="center">The Uncompromising Code Formatter</h2>
+<h2 align="center">The Uncompromising Code Formatter, now with single quotes!</h2>
 
 <p align="center">
 <a href="https://github.com/psf/black/actions"><img alt="Actions Status" src="https://github.com/psf/black/workflows/Test/badge.svg"></a>
