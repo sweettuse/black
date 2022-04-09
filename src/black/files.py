@@ -20,7 +20,15 @@ from typing import (
 from mypy_extensions import mypyc_attr
 from pathspec import PathSpec
 from pathspec.patterns.gitwildmatch import GitWildMatchPatternError
-import tomli
+
+if sys.version_info >= (3, 11):
+    try:
+        import tomllib
+    except ImportError:
+        # Help users on older alphas
+        import tomli as tomllib
+else:
+    import tomli as tomllib
 
 from black.output import err
 from black.report import Report
@@ -97,10 +105,10 @@ def find_pyproject_toml(path_search_start: Tuple[str, ...]) -> Optional[str]:
 def parse_pyproject_toml(path_config: str) -> Dict[str, Any]:
     """Parse a pyproject toml file, pulling out relevant parts for Black
 
-    If parsing fails, will raise a tomli.TOMLDecodeError
+    If parsing fails, will raise a tomllib.TOMLDecodeError
     """
     with open(path_config, "rb") as f:
-        pyproject_toml = tomli.load(f)
+        pyproject_toml = tomllib.load(f)
     config = pyproject_toml.get("tool", {}).get("black", {})
     return {k.replace("--", "").replace("-", "_"): v for k, v in config.items()}
 
@@ -151,23 +159,22 @@ def normalize_path_maybe_ignore(
     """
     try:
         abspath = path if path.is_absolute() else Path.cwd() / path
-        normalized_path = abspath.resolve().relative_to(root).as_posix()
-    except OSError as e:
-        if report:
-            report.path_ignored(path, f"cannot be read because {e}")
-        return None
-
-    except ValueError:
-        if path.is_symlink():
+        normalized_path = abspath.resolve()
+        try:
+            root_relative_path = normalized_path.relative_to(root).as_posix()
+        except ValueError:
             if report:
                 report.path_ignored(
                     path, f"is a symbolic link that points outside {root}"
                 )
             return None
 
-        raise
+    except OSError as e:
+        if report:
+            report.path_ignored(path, f"cannot be read because {e}")
+        return None
 
-    return normalized_path
+    return root_relative_path
 
 
 def path_is_excluded(
